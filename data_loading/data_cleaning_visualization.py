@@ -21,7 +21,7 @@ from scipy import interpolate
 import netCDF4
 import random
 
-path = r"D:\PyCharm Community Edition 2022.2.2\ENSO\数据源\round1_train_data_label"
+path = r"D:\PyCharm Community Edition 2022.2.2\ENSO\data_source\round1_train_data_label"
 data = netCDF4.Dataset( path + '\SODA_train.nc' )
 label = netCDF4.Dataset( path + '\SODA_label.nc' )
 label = np.array( label.variables[ 'nino' ] )
@@ -224,6 +224,7 @@ plt.show( block=True )
 ENSO现象是指在温度场上赤道东太平洋温度持续异常增暖，在风向场上热带东太平洋与热带西太平洋气压变化（表现为风向）相反的现象。
 在上图这个样本中没有出现ENSO现象，大家可以用同样的方法绘制并观察存在ENSO现象（Nino3.4指数连续5个月超过0.5℃）的样本的温度和风场。 
 '''
+
 
 if __name__ == '__main__' :
     print( "finished!" )

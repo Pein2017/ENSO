@@ -2,26 +2,17 @@
 作者：卢沛安
 时间：2023年08月28日
 '''
-import netCDF4 as nc
-import random
-import os
-from tqdm import tqdm
 import math
-import pandas as pd
-import numpy as np
 
+import netCDF4 as nc
+import numpy as np
 import seaborn as sns
 
 color = sns.color_palette()
 sns.set_style( 'darkgrid' )
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
-import torch
-from torch import nn , optim
-import torch.nn.functional as F
-from torch.utils.data import Dataset , DataLoader
-
-from sklearn.metrics import mean_squared_error
+from global_utils import seed_everything
 
 # 指定中文字体文件路径
 font_path = r'C:\Windows\Fonts\msyh.ttc'  # Microsoft YaHei 字体文件路径
@@ -33,19 +24,8 @@ plt.rcParams[ 'font.family' ] = custom_font.get_name()
 # 固定随机种子
 SEED = 22
 
-
-def seed_everything( seed=42 ) :
-    random.seed( seed )
-    os.environ[ 'PYTHONHASHSEED' ] = str( seed )
-    np.random.seed( seed )
-    torch.manual_seed( seed )
-    torch.cuda.manual_seed( seed )
-    torch.backends.cudnn.deterministic = True
-
-
 seed_everything( SEED )
-
-path = r"D:\DATA\ENSO\enso_round1_train_20210201"
+path = r"D:\PyCharm Community Edition 2022.2.2\ENSO\data_source\round1_train_data_label"
 soda_train = nc.Dataset( path + '\SODA_train.nc' )
 soda_label = nc.Dataset( path + '\SODA_label.nc' )
 cmip_train = nc.Dataset( path + '\CMIP_train.nc' )
@@ -212,49 +192,38 @@ print( 'Number of null in cmip6_trains after fillna:' , np.sum( np.isnan( cmip5_
 因为直接取原始数据的前12个月作为输入，后24个月作为标签所得到的验证集每一条都是从0月开始的，而线上的测试集起始月份是随机抽取的，
 因此这里仍然要尽可能保证验证集与测试集的数据分布一致，使构建的验证集的起始月份也是随机的。
 '''
+def build_dataset(cmip_trains, cmip_labels, num_models, num_samples):
+    X, y = [], []
+    for model_i in range(num_models):
+        indices = np.random.choice(cmip_trains.shape[1] - 12, size=num_samples)
+        for ind in indices:
+            X.append(cmip_trains[model_i, ind:ind + 12])
+            y.append(cmip_labels[model_i][ind:ind + 24])
+    return np.array(X), np.array(y)
+
 # 构造训练集
+num_samples = 100
+X_train, y_train = build_dataset(cmip5_trains, cmip5_labels, 17, num_samples)
+X_tmp, y_tmp = build_dataset(cmip6_trains, cmip6_labels, 15, num_samples)
+X_train = np.concatenate((X_train, X_tmp))
+y_train = np.concatenate((y_train, y_tmp))
 
-X_train = []
-y_train = []
-# 从CMIP5的17种模式中各抽取100条数据
-for model_i in range(17):
-    samples = np.random.choice(cmip5_trains.shape[1]-12, size=100)
-    for ind in samples:
-        X_train.append(cmip5_trains[model_i, ind: ind+12])
-        y_train.append(cmip5_labels[model_i][ind: ind+24])
-# 从CMIP6的15种模式种各抽取100条数据
-for model_i in range(15):
-    samples = np.random.choice(cmip6_trains.shape[1]-12, size=100)
-    for ind in samples:
-        X_train.append(cmip6_trains[model_i, ind: ind+12])
-        y_train.append(cmip6_labels[model_i][ind: ind+24])
-X_train = np.array(X_train)
-y_train = np.array(y_train)
 # 构造测试集
+X_valid, y_valid = build_dataset(soda_trains, soda_labels, 1, num_samples)
 
-X_valid = []
-y_valid = []
-samples = np.random.choice(soda_trains.shape[1]-12, size=100)
-for ind in samples:
-    X_valid.append(soda_trains[0, ind: ind+12])
-    y_valid.append(soda_labels[0][ind: ind+24])
-X_valid = np.array(X_valid)
-y_valid = np.array(y_valid)
+
 # 查看数据集维度
-X_train.shape, y_train.shape, X_valid.shape, y_valid.shape
-del cmip5_trains, cmip5_labels
-del cmip6_trains, cmip6_labels
-del soda_trains, soda_labels
+X_train.shape , y_train.shape , X_valid.shape , y_valid.shape
+del cmip5_trains , cmip5_labels
+del cmip6_trains , cmip6_labels
+del soda_trains , soda_labels
 
 # 保存数据集
-np.save('X_train_sample.npy', X_train)
-np.save('y_train_sample.npy', y_train)
-np.save('X_valid_sample.npy', X_valid)
-np.save('y_valid_sample.npy', y_valid)
+np.save( 'X_train_sample.npy' , X_train )
+np.save( 'y_train_sample.npy' , y_train )
+np.save( 'X_valid_sample.npy' , X_valid )
+np.save( 'y_valid_sample.npy' , y_valid )
 
-'''
-构造评估函数¶
-'''
 
 
 if __name__ == '__main__' :

@@ -1,37 +1,8 @@
-import numpy as np
 from numba import jit
-import os
-import torch
-from torch import nn
 from torch.utils.data import DataLoader
-from sklearn.metrics import mean_squared_error
-import torch.nn.functional as F
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.font_manager import FontProperties
-from utils import AIEarthDataset , score , Model
-from tqdm import tqdm
 
-
-def setup_plot_style() :
-    color = sns.color_palette()
-    sns.set_style( 'darkgrid' )
-    font_path = os.path.join( 'C:' , 'Windows' , 'Fonts' , 'msyh.ttc' )
-    custom_font = FontProperties( fname=font_path )
-    plt.rcParams[ 'font.family' ] = custom_font.get_name()
-
-
-def load_test_data( test_path , test_label_path ) :
-    files = os.listdir( test_path )
-    X_test = [ ]
-    y_test = [ ]
-    first_months = [ ]
-    for file in files :
-        X_test.append( np.load( test_path + file ) )
-        y_test.append( np.load( test_label_path + file ) )
-        first_months.append( int( file.split( '_' )[ 2 ] ) )
-
-    return np.array( X_test ) , np.array( y_test ) , np.array( first_months )
+from global_utils import *
+from utils import *
 
 
 @jit( nopython=True )
@@ -47,22 +18,10 @@ def fill_test_matrix( first_months ) :
     return test_month_sin , test_month_cos
 
 
-def evaluate_model( model , testloader , device , batch_size=32 ) :
-    model.eval()
-    model.to( device )
-    preds = np.zeros( (len( testloader.dataset ) , 24) )
-    for i , data in tqdm( enumerate( testloader ) ) :
-        data , labels = data
-        data = data.to( device )
-        labels = labels.to( device )
-        pred = model( data )
-        preds[ i * batch_size : (i + 1) * batch_size ] = pred.detach().cpu().numpy()
-    return preds
-
 
 def main() :
     setup_plot_style()
-    checkpoint_path = 'D:/PyCharm Community Edition 2022.2.2/ENSO/Modeling/CNN_LSTM_model_weights.pth'
+    checkpoint_path = r"D:\PyCharm Community Edition 2022.2.2\ENSO\CNN_LSTM_Modeling\CNN_LSTM_model_weights.pth"
     checkpoint = torch.load( checkpoint_path )
     model = Model()
     model.load_state_dict( checkpoint[ 'state_dict' ] )
